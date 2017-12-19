@@ -1,0 +1,12 @@
+common/saved
+common/test_records
+exchanges/sources/saved
+finance_data_import/analysis/aggregated
+finance_data_import/aggregated_data/test_input
+ico_data_crawler/sources/saved
+ico_data_crawler/imports/saved
+__pycache__/
+
+google_trends/import_data/test_input
+
+crypto-currency-export-until-31-10-2017.csv
