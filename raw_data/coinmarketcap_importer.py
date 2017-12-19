@@ -1,17 +1,18 @@
+import csv
 import json
 import logging
 import os.path
 import time
 
 import requests
-from finance_data_import.csv_strings import CSVStrings
-from finance_data_import.currency_handler import CurrencyHandler
 
+from csv_strings import CSVStrings
+from currency_handler import CurrencyHandler
 from local_data import LocalData
 
 
 def check_data_already_downloaded(currency, start, end, save_path):
-    filename = str(start) + "-" + str(end) + ".json"
+    filename = str(start) + "-" + str(end) + ".csv"
     return os.path.isfile(os.path.join(save_path, currency, filename))
 
 
@@ -22,26 +23,25 @@ class CoinMarketCapGraphAPIImporter:
         self.raw_data_path = LocalData.EXTERNAL_PATH_RAW_DATA
         self.save_path_additional_data = LocalData.EXTERNAL_PATH_ADDITIONAL_DATA
 
-        self.currency_handler = CurrencyHandler.Instance()
+        self.ch = CurrencyHandler.Instance()
 
-    def request_currency(self, currency, last_date):
-        if os.path.isfile(os.path.join(self.raw_data_path, currency, "ready" + str(last_date))):
-            self.logger.info("All currencies until {} already downloaded".format(last_date))
+    def request_currency(self, currency, last_date_for_download):
+        if os.path.isfile(os.path.join(self.raw_data_path, currency, "ready" + str(last_date_for_download))):
+            self.logger.info("All currencies until {} already downloaded".format(last_date_for_download))
             return
 
-        first_date = self.currency_handler.get_basic_currency_data(currency)["start_date"]
+        start_date_of_currency = self.ch.get_basic_currency_data(currency)["start_date"]
 
-        # Requesting data before data for this currency was available
-        if last_date < first_date:
+        if last_date_for_download < start_date_of_currency:
             return
 
         if not os.path.isdir(os.path.join(self.raw_data_path, currency)):
             os.mkdir(os.path.join(self.raw_data_path, currency))
 
-        self.request_data_monthly(currency, first_date, last_date)
+        self.request_data_monthly(currency, start_date_of_currency, last_date_for_download)
 
-        # Mark currency as completely downloaded for this "last_date" time
-        open(os.path.join(self.raw_data_path, currency, "ready" + str(last_date)), "w").close()
+        # Mark currency as completely downloaded for this timestamp
+        open(os.path.join(self.raw_data_path, currency, "ready" + str(last_date_for_download)), "w").close()
 
     def request_data_monthly(self, currency, first_date, last_date):
         span_month = 29 * 24 * 60 * 60 * 1000
@@ -58,12 +58,11 @@ class CoinMarketCapGraphAPIImporter:
         if check_data_already_downloaded(currency, start, end, save_path):
             return None
 
-        print("Sleeping for 1 secs")
+        print("Sleeping for 1 secs to circumvent DOS Protection denials")
         time.sleep(1)
 
         path = (
-            "https://" + LocalData.COIN_MARKET_CAP_GRAPH_API_URL + "/currencies/{}/{}/{}/".format(currency, start,
-                                                                                                  end))
+            "https://" + LocalData.COIN_MARKET_CAP_GRAPH_API_URL + "/currencies/{}/{}/{}/".format(currency, start, end))
         self.logger.info("Start: Downloading from " + path)
         response = requests.request("GET", path)
         self.logger.info("End: Downloading from " + path)
@@ -87,12 +86,17 @@ class CoinMarketCapGraphAPIImporter:
             self.logger.warning(
                 "For {} to {} we only got {} entries".format(start, end, len(data[CSVStrings.PRICE_USD_STRING])))
 
-        filename = str(start) + "-" + str(end) + ".json"
+        filename = str(start) + "-" + str(end) + ".csv"
         if not os.path.isdir(os.path.join(path, currency)):
             os.mkdir(os.path.join(path, currency))
 
+        csv_data = self.convert_json_to_csv_data(data)
+
         with open(os.path.join(path, currency, filename), "w") as file:
-            json.dump(data, file)
+            writer = csv.writer(file, delimiter=",", lineterminator="\n")
+            writer.writerow(("Timestamp", "USD", "BTC", "Volume", "Market_cap"))
+            for row in csv_data:
+                writer.writerow(list(row))
 
     def request_additional_data(self, currency, time_span_tuples):
         for time_span in time_span_tuples:
@@ -102,3 +106,20 @@ class CoinMarketCapGraphAPIImporter:
         if os.path.isdir(os.path.join(self.save_path_additional_data, currency)):
             open(os.path.join(self.save_path_additional_data, currency,
                               "ready" + str(LocalData.LAST_DATA_FOR_DOWNLOAD)), "w").close()
+
+    def convert_json_to_csv_data(self, data):
+
+        market_cap = list(data[CSVStrings.MARKET_CAP_STRING])
+        timestamps = list(list(zip(market_cap))[0])
+        market_cap = list(list(zip(market_cap))[1])
+
+        price_usd = list(data[CSVStrings.PRICE_USD_STRING])
+        price_usd = list(list(zip(price_usd))[1])
+
+        price_btc = list(data[CSVStrings.PRICE_BTC_STRING])
+        price_btc = list(list(zip(price_btc))[1])
+
+        volume_usd = list(data[CSVStrings.VOLUME_STRING])
+        volume_usd = list(list(zip(volume_usd))[1])
+
+        return zip(timestamps, price_usd, price_btc, volume_usd, market_cap)

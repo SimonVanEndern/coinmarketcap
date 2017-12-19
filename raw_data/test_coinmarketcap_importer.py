@@ -46,7 +46,7 @@ class CoinmarketcapImporterTest(unittest.TestCase, TestCommons):
 
         with patch('os.path.isfile', return_value=False) as is_file_mock:
             self.coinmarketcap_importer.request_data_monthly = MagicMock(name="request_data_monthly")
-            self.coinmarketcap_importer.currency_handler.get_basic_currency_data = MagicMock(
+            self.coinmarketcap_importer.ch.get_basic_currency_data = MagicMock(
                 return_value={'start_date': 1375642265000})
             with patch('builtins.open', mock_open(read_data="data")) as open_mock:
                 self.coinmarketcap_importer.request_currency(currency, last_date)

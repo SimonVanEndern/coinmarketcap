@@ -8,9 +8,9 @@ from local_data import LocalData
 
 
 class CurrencyCompressor:
-    def __init__(self, currency, last_time):
+    def __init__(self, currency_name: str, last_time: int):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.currency = currency
+        self.currency = currency_name
         self.last_time = last_time
 
         self.raw_data_path = LocalData.EXTERNAL_PATH_RAW_DATA
@@ -30,10 +30,10 @@ class CurrencyCompressor:
             if os.path.isfile(os.path.join(self.raw_data_path, self.currency, "ready" + str(last_time))):
                 pass
             else:
-                self.logger.info("Currency {} not yet ready for compression".format(currency))
+                self.logger.info("Currency {} not yet ready for compression".format(currency_name))
                 return
         else:
-            self.logger.info("Currency {} not yet ready for compression".format(currency))
+            self.logger.info("Currency {} not yet ready for compression".format(currency_name))
             return
 
         self.compress_data()

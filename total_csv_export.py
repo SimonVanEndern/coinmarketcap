@@ -21,7 +21,7 @@ class TotalCSVExport:
                 # counter += 1
                 # if counter > 10:
                 #     break
-                # currency: Currency = self.currency_handler.get_currency(currency_name)
+                # currency: Currency = self.ch.get_currency(currency_name)
                 if currency is None or currency.data is None:
                     print("Currency somehow not there")
                     continue

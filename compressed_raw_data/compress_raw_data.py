@@ -12,5 +12,5 @@ class SimplifyRawData:
     def compress_data(self, last_time):
         logging.info("{} Compressing data for all currencies".format(self.__class__.__name__))
 
-        for currency in self.currency_handler.get_all_currency_names():
-            CurrencyCompressor(currency, last_time)
+        for currency_name in self.currency_handler.get_all_currency_names():
+            CurrencyCompressor(currency_name, last_time)
